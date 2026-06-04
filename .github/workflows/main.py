@@ -24,40 +24,25 @@ prompt = f"""
 You are the editor of 'Market Evening Express'. Today is {datetime.now().strftime("%d %b %Y")}.
 Raw Data: {market_summary}
 Write a short, exciting 2-paragraph evening summary for Indian stock market investors.
+Use emojis to make it look like a news bulletin.
 """
 
 response = model.generate_content(prompt)
 blog_content = response.text
 
-# 4. Publish to Hashnode
-print("Publishing to Hashnode...")
-query = """
-mutation PublishPost($input: PublishPostInput!) {
-  publishPost(input: $input) { post { url } }
-}
-"""
+# 4. Publish to Telegram Channel
+print("Publishing to Telegram...")
+telegram_url = f"https://api.telegram.org/bot{os.environ['TELEGRAM_BOT_TOKEN']}/sendMessage"
 
-variables = {
-    "input": {
-        "title": f"Market Evening Express — {datetime.now().strftime('%b %d, %Y')}",
-        "contentMarkdown": blog_content,
-        "publicationId": os.environ["HASHNODE_PUB_ID"],
-        "tags": [{"name": "Stock Market", "slug": "stock-market"}]
-    }
+payload = {
+    "chat_id": os.environ["TELEGRAM_CHAT_ID"],
+    "text": blog_content,
+    "parse_mode": "Markdown" # Allows bold text and emojis
 }
 
-headers = {
-    "Authorization": os.environ["HASHNODE_TOKEN"],
-    "Content-Type": "application/json"
-}
+response = requests.post(telegram_url, data=payload)
 
-response = requests.post(
-    "https://gql.hashnode.com",
-    json={"query": query, "variables": variables},
-    headers=headers
-)
-
-if "errors" in response.json():
-    print("Failed to publish:", response.json()["errors"])
+if response.status_code == 200:
+    print("Success! Newspaper delivered to Telegram.")
 else:
-    print("Success! Blog published.")
+    print("Failed to publish:", response.text)
